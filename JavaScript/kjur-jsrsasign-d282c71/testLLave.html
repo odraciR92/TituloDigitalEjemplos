@@ -1,0 +1,119 @@
+<html>
+<head>  
+	<meta charset="utf-8">
+	<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/jsrsasign/8.0.12/jsrsasign-all-min.js"></script>
+</head>
+<body>
+	<p>
+		LLAVE PRIVADA: <input type="file" name="key" id="key" />
+	</p>
+	<p>PASSWORD: <input type="password" name="pass" id="pass"/></p>
+	<p>
+		LLAVE PUBLICA: <input type="file" name="cer" id="cer"/>
+	</p>
+	<p>
+		VALOR A FIRMAR : <input type="text" name="test_message" id="test_message"/>
+	</p>
+
+	<input type="button" name="Firma" id="firma" value="Firma" />
+
+	<input type="button" name="Valida" id="valida" value="Valida" />
+
+	<p id="signedString"></p>
+	<p id="verifyString"></p>
+	<p id="certInfo"></p>
+
+
+	<script type="text/javascript">
+		var keyFile =null;
+		var cerFile = null;
+		var signHex = null;
+
+		function readKeyFile(e) {
+		  var file = e.target.files[0];
+		  if (!file) {
+		    return;
+		  }
+		  var reader = new FileReader();
+
+		  reader.onload = function(e) {
+		    keyFile= e.target.result;
+		    
+		  };
+		  reader.readAsArrayBuffer(file);
+		}
+
+		function readCerFile(e) {
+		  var file = e.target.files[0];
+		  if (!file) {
+		    return;
+		  }
+		  var reader = new FileReader();
+
+		  reader.onload = function(e) {
+		    cerFile= e.target.result;
+		    
+		  };
+		  reader.readAsArrayBuffer(file);
+		}
+
+
+		function signString(){
+			if(keyFile == null){
+				alert("Carga tu archivo .key");
+		    	return;
+			}
+			var hexKey = ArrayBuffertohex(keyFile);
+		    var pem  = KJUR.asn1.ASN1Util.getPEMStringFromHex(hexKey, 'ENCRYPTED PRIVATE KEY');
+		    var pass = document.getElementById('pass').value;
+
+		    var test_message = document.getElementById('test_message').value;
+		    if(pass == undefined || pass == ""){
+				alert("Ingresa tu password");
+
+		    	return;
+		    }
+		    var rsa = KEYUTIL.getKey(pem, pass);
+		    signHex = rsa.sign(test_message,"sha256");
+		    sign64= hextob64(signHex);
+		    document.getElementById('signedString').innerHTML = "Cadena firmada: "+sign64;
+
+		}
+
+		function verifySign(){
+			if(cerFile == null){
+				alert("Carga tu archivo .cer");
+		    	return;
+			}
+			if(signHex == null){
+				alert("Oprime antes boton de Firma");
+		    	return;
+		    }
+			var hexCer = ArrayBuffertohex(cerFile);
+		    var pem  = KJUR.asn1.ASN1Util.getPEMStringFromHex(hexCer, 'CERTIFICATE');
+
+		    var cerKey =  X509.getPublicKeyFromCertPEM(pem);
+		    var x = new X509();
+		    x.readCertPEM(pem);
+		    var infoCert = x.getInfo();
+		    console.log(infoCert);
+		    document.getElementById('certInfo').innerHTML =  infoCert;
+
+		    var test_message = document.getElementById('test_message').value;
+		   
+		   	var isValid = cerKey.verify(test_message, signHex);
+
+		    // display verification result
+		    if (isValid) {		      
+		      document.getElementById('verifyString').innerHTML = "isValid ";
+		    } else {		      
+		      document.getElementById('verifyString').innerHTML = "isInvalid ";
+		    }		    
+		}
+		document.getElementById('key').addEventListener('change',readKeyFile,false);
+		document.getElementById('cer').addEventListener('change',readCerFile,false);
+		document.getElementById('firma').addEventListener('click',signString,false);
+		document.getElementById('valida').addEventListener('click',verifySign,false);
+	</script>
+</body>
+</html>
